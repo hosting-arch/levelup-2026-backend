@@ -1,0 +1,5 @@
+node_modules
+
+.env
+package-lock.json
+levelup-2026-493413-a7a6bd062b1e.json
