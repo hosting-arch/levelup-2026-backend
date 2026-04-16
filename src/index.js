@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
 import apiRoutes from './routes/apiRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import errorMiddleware from './middlewares/errorMiddleware.js';
@@ -42,4 +43,19 @@ app.use(errorMiddleware);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+
+    // ----- KEEP-ALIVE CRON (every 5 minutes) -----
+    const SELF_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+    const PING_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+    setInterval(async () => {
+        try {
+            await axios.get(SELF_URL);
+            console.log(`[keep-alive] Ping OK → ${SELF_URL}`);
+        } catch (err) {
+            console.warn(`[keep-alive] Ping failed: ${err.message}`);
+        }
+    }, PING_INTERVAL_MS);
+
+    console.log(`[keep-alive] Self-ping scheduled every 5 minutes → ${SELF_URL}`);
 });
