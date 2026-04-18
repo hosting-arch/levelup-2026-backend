@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import * as inscriereController from '../controllers/inscriereController.js';
 import * as contactController from '../controllers/contactController.js';
+import * as leaderboardController from '../controllers/leaderboardController.js';
 
 const router = express.Router();
 
@@ -22,5 +23,10 @@ router.post('/inscriere', upload.fields([
 router.post('/contact', contactController.handleContactMessage);
 // Check Route
 router.get('/check-team/:teamName', inscriereController.checkTeamName);
+
+// Leaderboard Routes
+router.post('/leaderboard', leaderboardController.saveScore);
+router.get('/leaderboard', leaderboardController.getLeaderboard);
+router.post('/leaderboard/reset', leaderboardController.resetLeaderboard);
 
 export default router;
