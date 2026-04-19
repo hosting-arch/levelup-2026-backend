@@ -141,33 +141,41 @@ export const sendCampaign = async (req, res, next) => {
             return next(new ApiError(400, 'Lipsesc date necesare (subiect, continut sau lista prea mica).'));
         }
 
-        let successCount = 0;
-        let failCount = 0;
-        
         // Minimalist space remover to save KB. We preserve comments cause of Outlook mso tags!
         const minifiedHtml = htmlContent
             .replace(/>\s+</g, '><')
             .trim();
 
-        console.log(`INFO: Sending campaign "${subject}" to ${recipients.length} recipients.`);
-        console.log(`INFO: Minified HTML payload length: ${minifiedHtml?.length} chars.`);
+        console.log(`INFO: Started sending campaign "${subject}" to ${recipients.length} recipients in background.`);
 
-        for (const email of recipients) {
-            try {
-                await transporter.sendMail({
-                    from: `"Level UP 2026" <${process.env.SMTP_USER}>`,
-                    to: email,
-                    subject: subject,
-                    html: minifiedHtml
-                });
-                successCount++;
-            } catch (err) {
-                console.error(`Eroare la trimitere email către ${email}:`, err);
-                failCount++;
+        // Trimite raspunsul imediat catre frontend pentru a evita Network Timeout
+        res.status(200).json({ 
+            success: true, 
+            message: `Campania a fost trimisa in executie in fundal pentru ${recipients.length} utilizatori.` 
+        });
+
+        // Functie asincrona care ruleaza in fundal (fire-and-forget)
+        (async () => {
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const email of recipients) {
+                try {
+                    await transporter.sendMail({
+                        from: `"Level UP 2026" <${process.env.SMTP_USER}>`,
+                        to: email,
+                        subject: subject,
+                        html: minifiedHtml
+                    });
+                    successCount++;
+                } catch (err) {
+                    console.error(`Eroare la trimitere email către ${email}:`, err);
+                    failCount++;
+                }
             }
-        }
+            console.log(`INFO: Background campaign "${subject}" finished! Success: ${successCount}, Failed: ${failCount}`);
+        })();
 
-        res.status(200).json({ success: true, successCount, failCount });
     } catch (error) {
         next(error);
     }
