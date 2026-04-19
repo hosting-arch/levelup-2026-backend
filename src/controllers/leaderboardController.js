@@ -76,3 +76,18 @@ export const resetLeaderboard = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getConfig = async (req, res, next) => {
+    try {
+        const docRef = db.collection('config').doc('minigame');
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+            res.status(200).json({ status: 'success', data: docSnap.data() });
+        } else {
+            // Default fallback
+            res.status(200).json({ status: 'success', data: { TIMER_SECONDS: 180, NUM_ITEMS: 30 } });
+        }
+    } catch (error) {
+        next(error);
+    }
+};

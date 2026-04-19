@@ -27,4 +27,9 @@ router.get('/admins', adminController.getAdminsList);
 router.post('/admins', adminController.addAdmin);
 router.delete('/admins/:email', adminController.removeAdmin);
 
+// Newsletter & Mailing List Management
+router.get('/mailing-list', adminController.getMailingList);
+router.put('/mailing-list', adminController.updateMailingList);
+router.post('/campaign/send', adminController.sendCampaign);
+
 export default router;

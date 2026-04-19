@@ -28,5 +28,6 @@ router.get('/check-team/:teamName', inscriereController.checkTeamName);
 router.post('/leaderboard', leaderboardController.saveScore);
 router.get('/leaderboard', leaderboardController.getLeaderboard);
 router.post('/leaderboard/reset', leaderboardController.resetLeaderboard);
+router.get('/leaderboard/config', leaderboardController.getConfig);
 
 export default router;

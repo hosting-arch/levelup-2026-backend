@@ -105,3 +105,71 @@ export const setupFirstAdmin = async (req, res, next) => {
         next(error);
     }
 };
+
+import transporter from '../config/mailer.js';
+
+// GET /api/admin/mailing-list
+export const getMailingList = async (req, res, next) => {
+    try {
+        const docSnap = await db.collection('config').doc('mailing_list').get();
+        const data = docSnap.exists ? docSnap.data().emails || [] : [];
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// PUT /api/admin/mailing-list
+export const updateMailingList = async (req, res, next) => {
+    try {
+        const { emails } = req.body;
+        if (!Array.isArray(emails)) {
+            return next(new ApiError(400, 'Format invalid. Este necesar un array de adrese.'));
+        }
+        await db.collection('config').doc('mailing_list').set({ emails });
+        res.status(200).json({ success: true, message: 'Lista a fost actualizată.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// POST /api/admin/campaign/send
+export const sendCampaign = async (req, res, next) => {
+    try {
+        const { subject, htmlContent, recipients } = req.body;
+        if (!subject || !htmlContent || !Array.isArray(recipients)) {
+            return next(new ApiError(400, 'Lipsesc date necesare (subiect, continut sau lista prea mica).'));
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+        
+        // Minimalist space remover to save KB. We preserve comments cause of Outlook mso tags!
+        const minifiedHtml = htmlContent
+            .replace(/>\s+</g, '><')
+            .trim();
+
+        console.log(`INFO: Sending campaign "${subject}" to ${recipients.length} recipients.`);
+        console.log(`INFO: Minified HTML payload length: ${minifiedHtml?.length} chars.`);
+
+        for (const email of recipients) {
+            try {
+                await transporter.sendMail({
+                    from: `"Level UP 2026" <${process.env.SMTP_USER}>`,
+                    to: email,
+                    subject: subject,
+                    html: minifiedHtml
+                });
+                successCount++;
+            } catch (err) {
+                console.error(`Eroare la trimitere email către ${email}:`, err);
+                failCount++;
+            }
+        }
+
+        res.status(200).json({ success: true, successCount, failCount });
+    } catch (error) {
+        next(error);
+    }
+};
+
