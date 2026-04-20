@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
+import cookieParser from 'cookie-parser';
 import apiRoutes from './routes/apiRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import errorMiddleware from './middlewares/errorMiddleware.js';
@@ -24,6 +25,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
 
 // ----- ROUTES -----
 app.use('/api', apiRoutes);

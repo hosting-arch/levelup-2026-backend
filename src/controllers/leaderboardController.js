@@ -1,4 +1,5 @@
 import { db } from '../config/firebase.js';
+import crypto from 'crypto';
 
 // In-memory store for active game sessions (server-side timing + item tracking)
 const gameSessions = new Map();
@@ -13,22 +14,38 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000);
 
+// Cookie options — HttpOnly so JS can't read it
+const COOKIE_NAME = 'game_session';
+const getCookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 30 * 60 * 1000, // 30 minutes
+    path: '/',
+});
+
 // POST /api/leaderboard/start
 export const startGame = async (req, res, next) => {
     try {
         const configDoc = await db.collection('config').doc('minigame').get();
         const numItems = configDoc.exists ? (configDoc.data().NUM_ITEMS || 30) : 30;
 
-        const sessionToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        // Generate a cryptographically secure token
+        const sessionToken = crypto.randomBytes(32).toString('hex');
+
         gameSessions.set(sessionToken, {
             startTime: Date.now(),
             numItems: numItems,
-            clickedCount: 0,       // How many items the server has confirmed
+            clickedCount: 0,
             lastClickTime: Date.now(),
             completed: false,
             used: false
         });
-        res.status(200).json({ status: 'success', sessionToken });
+
+        // Set the token as an HttpOnly cookie — invisible to client JS
+        res.cookie(COOKIE_NAME, sessionToken, getCookieOptions());
+
+        res.status(200).json({ status: 'success' });
     } catch (error) {
         next(error);
     }
@@ -37,18 +54,29 @@ export const startGame = async (req, res, next) => {
 // POST /api/leaderboard/click — called for EACH item click
 export const clickItem = async (req, res, next) => {
     try {
-        const { sessionToken, itemId } = req.body;
+        const { itemId } = req.body;
+        const sessionToken = req.cookies[COOKIE_NAME];
 
-        if (!sessionToken || itemId === undefined) {
-            return res.status(400).json({ status: 'error', message: 'Missing sessionToken or itemId.' });
+        if (!sessionToken) {
+            return res.status(400).json({ status: 'error', message: 'Sesiune invalida (cookie lipsa).' });
+        }
+        if (itemId === undefined) {
+            return res.status(400).json({ status: 'error', message: 'Missing itemId.' });
         }
 
         const session = gameSessions.get(sessionToken);
         if (!session) {
-            return res.status(400).json({ status: 'error', message: 'Sesiune invalida.' });
+            return res.status(400).json({ status: 'error', message: 'Sesiune invalida sau expirata.' });
         }
         if (session.completed || session.used) {
             return res.status(400).json({ status: 'error', message: 'Jocul s-a terminat deja.' });
+        }
+
+        // Rate limiting: minimum 200ms between clicks (impossible for scripts to bypass humanly)
+        const now = Date.now();
+        const timeSinceLastClick = now - session.lastClickTime;
+        if (timeSinceLastClick < 200) {
+            return res.status(429).json({ status: 'error', message: 'Prea rapid. Incearca mai incet.' });
         }
 
         // Validate that the item ID matches the NEXT expected item (must click in order: 0, 1, 2...)
@@ -57,7 +85,7 @@ export const clickItem = async (req, res, next) => {
         }
 
         session.clickedCount++;
-        session.lastClickTime = Date.now();
+        session.lastClickTime = now;
 
         // Check if all items have been found
         if (session.clickedCount >= session.numItems) {
@@ -77,10 +105,14 @@ export const clickItem = async (req, res, next) => {
 // POST /api/leaderboard — save score (only if server confirmed ALL clicks)
 export const saveScore = async (req, res, next) => {
     try {
-        const { name, sessionToken } = req.body;
+        const { name } = req.body;
+        const sessionToken = req.cookies[COOKIE_NAME];
 
-        if (!name || !sessionToken) {
-            return res.status(400).json({ status: 'error', message: 'Name and sessionToken are required.' });
+        if (!name) {
+            return res.status(400).json({ status: 'error', message: 'Name is required.' });
+        }
+        if (!sessionToken) {
+            return res.status(400).json({ status: 'error', message: 'Sesiune invalida (cookie lipsa).' });
         }
 
         const session = gameSessions.get(sessionToken);
@@ -98,9 +130,12 @@ export const saveScore = async (req, res, next) => {
         const elapsedMs = Date.now() - session.startTime;
         const elapsedSeconds = Math.round(elapsedMs / 1000);
 
-        // Mark session as used
+        // Mark session as used and delete
         session.used = true;
         gameSessions.delete(sessionToken);
+
+        // Clear the cookie
+        res.clearCookie(COOKIE_NAME, getCookieOptions());
 
         // Anti-cheat: reject impossibly fast times
         const MIN_REALISTIC_TIME = 10;
