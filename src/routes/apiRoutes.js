@@ -25,6 +25,8 @@ router.post('/contact', contactController.handleContactMessage);
 router.get('/check-team/:teamName', inscriereController.checkTeamName);
 
 // Leaderboard Routes
+router.post('/leaderboard/start', leaderboardController.startGame);
+router.post('/leaderboard/click', leaderboardController.clickItem);
 router.post('/leaderboard', leaderboardController.saveScore);
 router.get('/leaderboard', leaderboardController.getLeaderboard);
 router.post('/leaderboard/reset', leaderboardController.resetLeaderboard);
