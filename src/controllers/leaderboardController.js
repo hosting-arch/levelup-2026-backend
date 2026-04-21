@@ -16,10 +16,11 @@ setInterval(() => {
 
 // Cookie options — HttpOnly so JS can't read it
 const COOKIE_NAME = 'game_session';
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.BACKEND_URL;
 const getCookieOptions = () => ({
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 30 * 60 * 1000, // 30 minutes
     path: '/',
 });
