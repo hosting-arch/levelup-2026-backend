@@ -138,9 +138,9 @@ export const saveScore = async (req, res, next) => {
         res.clearCookie(COOKIE_NAME, getCookieOptions());
 
         // Anti-cheat: reject impossibly fast times
-        const MIN_REALISTIC_TIME = 10;
+        const MIN_REALISTIC_TIME = 60;
         if (elapsedSeconds < MIN_REALISTIC_TIME) {
-            return res.status(400).json({ status: 'error', message: `Timpul de ${elapsedSeconds}s este prea mic.` });
+            return res.status(400).json({ status: 'error', message: `Timpul de ${elapsedSeconds}s este fizic imposibil de realizat uman. Ești detectat ca bot.` });
         }
 
         const configDoc = await db.collection('config').doc('minigame').get();

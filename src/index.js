@@ -49,7 +49,7 @@ app.listen(PORT, () => {
 
     // ----- KEEP-ALIVE CRON (every 5 minutes) -----
     const SELF_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
-    const PING_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+    const PING_INTERVAL_MS = 1 * 60 * 1000; // 1 minute
 
     setInterval(async () => {
         try {
