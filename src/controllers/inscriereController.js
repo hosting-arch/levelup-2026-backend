@@ -15,6 +15,9 @@ export const checkTeamName = async (req, res, next) => {
 };
 
 export const handleRegistration = async (req, res, next) => {
+    // Inscrierile sunt inchise
+    return next(new ApiError(403, 'Inscrierile pentru Level UP 2026 s-au incheiat. Va multumim pentru interes!'));
+
     try {
         const { emailLead, teamName, teammate1, teammate2, gdprConsent } = req.body;
         
